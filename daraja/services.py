@@ -258,6 +258,7 @@ class DarajaPayoutManager:
         self._validate_amount(amount)
 
         payload = {
+            "OriginatorConversationID": "ini1un3in#nniin0001",
             "InitiatorName": self.config.initiator_name,
             "SecurityCredential": self._get_security_credential(),
             "CommandID": command_id,
@@ -288,11 +289,12 @@ class DarajaPayoutManager:
             "Initiator": self.config.initiator_name,
             "SecurityCredential": self._get_security_credential(),
             "CommandID": command_id,
-            "SenderIdentifierType": self.IDENTIFIER_PAYBILL,
-            "RecieverIdentifierType": receiver_identifier_type,
+            "SenderIdentifierType": int(self.IDENTIFIER_PAYBILL),
+            "RecieverIdentifierType": int(receiver_identifier_type),
+            "Requester": int("254708374149"),
             "Amount": amount,
-            "PartyA": self.config.shortcode,
-            "PartyB": receiver_shortcode,
+            "PartyA": int(self.config.shortcode),
+            "PartyB": int(receiver_shortcode),
             "AccountReference": account_reference,
             "Remarks": remarks,
             "QueueTimeOutURL": self.config.callback_urls["b2b_timeout"],

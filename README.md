@@ -614,6 +614,27 @@ When Daraja sends a callback:
 6. ✅ DarajaCallbackLog entry created for audit trail
 7. ✅ Response sent to Daraja: `{"ResultCode": 0, "ResultDesc": "Accepted"}`
 
+### Result Codes
+
+Common B2C callback result codes you may encounter:
+
+| ResultCode | ResultDesc | Explanation |
+|------------|------------|-------------|
+| `0` | Request completed successfully. | M-Pesa finished processing the B2C transfer successfully. |
+| `1` | Available balance is too low for this transaction. | The B2C utility account does not have enough funds to send the requested amount. |
+| `2` | Rejected by a limit rule. | The submitted amount falls below the minimum B2C amount allowed for that service. |
+| `3` | Rejected by a limit rule because the amount is too high. | The requested transfer exceeds the maximum B2C amount permitted in a single transaction. |
+| `4` | Rejected by a limit rule because it would pass the daily transfer cap. | Processing the transfer would push the recipient or account beyond the allowed daily transfer threshold. |
+| `8` | Rejected by a limit rule because it would exceed the maximum balance. | Completing the transfer would make the recipient account go over the allowed maximum M-Pesa wallet balance. |
+| `11` | The DebitParty is currently in an invalid state. | The B2C source account is not in an active state and cannot send funds. |
+| `21` | The initiator is not authorized to submit this request. | The API initiator user does not have the required B2C role or permissions for this operation. |
+| `2001` | The initiator details are invalid. | The supplied initiator credentials are wrong, or the encrypted password was generated with the wrong certificate or method. |
+| `2006` | Rejected by an account rule because the account status blocks the transaction. | The B2C account is inactive or otherwise restricted from transacting. |
+| `2028` | The request is not allowed for the assigned product. | The specified `PartyA` shortcode is not enabled to perform B2C disbursements. |
+| `2040` | The credit party customer type is not supported by this service. | The recipient is not registered on M-Pesa, so the transfer cannot be completed. |
+| `8006` | The security credential is locked. | The initiator password is locked and must be reset or unlocked by a business administrator. |
+| `SFC_IC0003` | The operator could not be found. | The submitted phone number is invalid or does not exist on the M-Pesa network. |
+
 ### Manual Callback Inspection
 
 ```python
