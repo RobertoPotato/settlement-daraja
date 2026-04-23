@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.conf import settings
 
+from .models import DarajaTransaction
 from .services import DarajaPayoutManager
 
 
@@ -18,6 +19,13 @@ def _default_environment() -> str:
 
 
 class B2CWithdrawalForm(forms.Form):
+    ORIGINATOR_ID_MODE_AUTO = "auto"
+    ORIGINATOR_ID_MODE_MANUAL = "manual"
+    ORIGINATOR_ID_MODE_CHOICES = [
+        (ORIGINATOR_ID_MODE_AUTO, "Auto-generate unique ID"),
+        (ORIGINATOR_ID_MODE_MANUAL, "Enter ID manually"),
+    ]
+
     environment = forms.ChoiceField(
         choices=ENVIRONMENT_CHOICES,
         initial=_default_environment,
@@ -34,6 +42,41 @@ class B2CWithdrawalForm(forms.Form):
         ],
         initial=DarajaPayoutManager.B2C_BUSINESS_PAYMENT,
     )
+    originator_id_mode = forms.ChoiceField(
+        choices=ORIGINATOR_ID_MODE_CHOICES,
+        initial=ORIGINATOR_ID_MODE_AUTO,
+    )
+    originator_conversation_id = forms.CharField(
+        max_length=128,
+        required=False,
+        help_text="Used only when manual mode is selected.",
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        mode = cleaned_data.get("originator_id_mode", self.ORIGINATOR_ID_MODE_AUTO)
+        originator_conversation_id = str(
+            cleaned_data.get("originator_conversation_id") or ""
+        ).strip()
+
+        if mode == self.ORIGINATOR_ID_MODE_MANUAL:
+            if not originator_conversation_id:
+                self.add_error(
+                    "originator_conversation_id",
+                    "OriginatorConversationID is required in manual mode.",
+                )
+            elif DarajaTransaction.objects.filter(
+                originator_conversation_id=originator_conversation_id
+            ).exists():
+                self.add_error(
+                    "originator_conversation_id",
+                    "This OriginatorConversationID already exists. Use a different value.",
+                )
+        else:
+            originator_conversation_id = ""
+
+        cleaned_data["originator_conversation_id"] = originator_conversation_id
+        return cleaned_data
 
 
 class B2BWithdrawalForm(forms.Form):

@@ -159,7 +159,7 @@ Used when integrating directly from your business logic (non-API usage).
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
-| `pay_to_phone()` | `phone_number` (str), `amount` (Decimal), `remarks` (str, opt), `occasion` (str, opt), `command_id` (str, opt) | dict | Initiate B2C payout to phone number. Phone normalized to 254XX format. Returns Daraja response with ConversationID. |
+| `pay_to_phone()` | `phone_number` (str), `amount` (Decimal), `remarks` (str, opt), `occasion` (str, opt), `command_id` (str, opt), `originator_conversation_id` (str, opt) | dict | Initiate B2C payout to phone number. Phone normalized to 254XX format. A unique `OriginatorConversationID` is auto-generated when omitted, or you can provide one manually. Returns Daraja response with ConversationID. |
 | `pay_to_paybill()` | `receiver_shortcode` (str), `amount` (Decimal), `account_reference` (str, opt), `remarks` (str, opt), `receiver_identifier_type` (str, opt), `command_id` (str, opt) | dict | Initiate B2B payout to paybill/bank. Returns Daraja response with ConversationID. |
 | `check_balance()` | `identifier_type` (str, opt) | dict | Query account balance asynchronously. Result delivered to callback URL. |
 | `_get_access_token()` | None | str | Fetch and cache OAuth token. Automatically called before API requests. Token cached with expiry buffer. |
@@ -190,7 +190,8 @@ Require `@login_required` authentication. All endpoints accept POST requests wit
     "amount": "100.50",
     "remarks": "Salary payment",
     "occasion": "Monthly salary",
-    "command_id": "BusinessPayment"
+    "command_id": "BusinessPayment",
+    "originator_conversation_id": "merchant-ref-20260423-0001"
 }
 ```
 
@@ -203,6 +204,7 @@ Require `@login_required` authentication. All endpoints accept POST requests wit
 | `remarks` | string | No | Transaction remarks/description (max 500 chars) |
 | `occasion` | string | No | Transaction occasion (max 500 chars) |
 | `command_id` | string | No | Daraja command ID (default: BusinessPayment). Options: SalaryPayment, BusinessPayment, PromotionPayment |
+| `originator_conversation_id` | string | No | Merchant-generated unique ID for idempotency and status checks. If omitted, the system generates a unique ID automatically. |
 
 **Success Response** (HTTP 201):
 ```json
@@ -368,7 +370,8 @@ try:
         amount=100.50,
         remarks="Salary payment",
         occasion="Monthly salary",
-        command_id="BusinessPayment"  # optional
+        command_id="BusinessPayment",  # optional
+        originator_conversation_id="merchant-ref-20260423-0001",  # optional
     )
     
     # Response contains Daraja API response
@@ -470,7 +473,8 @@ curl -X POST http://localhost:8000/api/daraja/pay-to-phone/ \
     "phone_number": "0712345678",
     "amount": "100.50",
     "remarks": "Salary payment",
-    "occasion": "Monthly salary"
+        "occasion": "Monthly salary",
+        "originator_conversation_id": "merchant-ref-20260423-0001"
   }'
 ```
 
@@ -494,7 +498,9 @@ response = session.post(
     json={
         "phone_number": "0712345678",
         "amount": 100.50,
-        "remarks": "Salary payment"
+        "remarks": "Salary payment",
+        # Optional. If omitted, backend auto-generates a unique value.
+        "originator_conversation_id": "merchant-ref-20260423-0001",
     }
 )
 
@@ -556,14 +562,24 @@ This project also includes a simple Tailwind-based web interface:
 
 When you submit a form on `/home/`:
 1. A Daraja request is executed using the manager class.
-2. A `DarajaUITestRun` row is created with:
+2. For B2C, you can choose to auto-generate a unique `OriginatorConversationID` or provide one manually.
+3. Manual `OriginatorConversationID` values are validated for uniqueness before request submission.
+4. A `DarajaUITestRun` row is created with:
      - Full submitted request JSON
      - Full Daraja response JSON
      - Response code
      - Interpreted test status (`submitted`, `failed`, or `error`)
      - Human-readable interpretation
-3. If conversation IDs are present, the run links to the corresponding `DarajaTransaction`.
-4. Recent runs are displayed in-page with expandable JSON blocks.
+5. If conversation IDs are present, the run links to the corresponding `DarajaTransaction`.
+6. Recent runs are displayed in-page with expandable JSON blocks.
+
+### OriginatorConversationID Definition
+
+`OriginatorConversationID` is a merchant-generated unique string used per B2C request to prevent duplicate disbursement. Use it to check a transaction's status before retrying another payout.
+
+In this project:
+- If you do not send one, the backend auto-generates a unique value for each B2C request.
+- If you send one manually (API or UI form), it must be unique across existing transactions.
 
 ---
 

@@ -39,6 +39,15 @@ class PayToPhoneSerializer(serializers.Serializer):
         default="BusinessPayment",
         help_text="Daraja command ID (SalaryPayment, BusinessPayment, PromotionPayment)",
     )
+    originator_conversation_id = serializers.CharField(
+        max_length=128,
+        required=False,
+        allow_blank=False,
+        help_text=(
+            "Optional merchant-generated unique ID for idempotency. "
+            "If omitted, the system auto-generates one."
+        ),
+    )
 
 
 class PayToPaybillSerializer(serializers.Serializer):

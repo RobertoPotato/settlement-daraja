@@ -1,6 +1,7 @@
 import base64
 import logging
 import os
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -9,6 +10,7 @@ import requests
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.x509 import load_pem_x509_certificate
 from django.conf import settings
+from django.db import IntegrityError
 
 from .models import DarajaRequestLog, DarajaTransaction
 
@@ -158,8 +160,23 @@ class DarajaPayoutManager:
             account_reference=str(payload.get("AccountReference", "")),
             remarks=str(payload.get("Remarks", "")),
             occasion=str(payload.get("Occasion", "")),
+            originator_conversation_id=str(payload.get("OriginatorConversationID", "")),
             request_payload=payload,
         )
+
+    @staticmethod
+    def _clean_originator_conversation_id(originator_conversation_id: str) -> str:
+        value = originator_conversation_id.strip()
+        if not value:
+            raise ValueError("OriginatorConversationID cannot be blank when provided")
+        if len(value) > 128:
+            raise ValueError("OriginatorConversationID must be 128 characters or fewer")
+        return value
+
+    @classmethod
+    def _generate_originator_conversation_id(cls) -> str:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        return f"b2c-{timestamp}-{uuid.uuid4().hex[:12]}"
 
     def _post(self, endpoint: str, payload: dict[str, Any], transaction: DarajaTransaction | None = None) -> dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
@@ -253,25 +270,66 @@ class DarajaPayoutManager:
         remarks: str = "Payout",
         occasion: str = "",
         command_id: str = B2C_BUSINESS_PAYMENT,
+        originator_conversation_id: str | None = None,
     ) -> dict[str, Any]:
         self._validate()
         self._validate_amount(amount)
 
-        payload = {
-            "OriginatorConversationID": "ini1un3in#nniin0001",
-            "InitiatorName": self.config.initiator_name,
-            "SecurityCredential": self._get_security_credential(),
-            "CommandID": command_id,
-            "Amount": amount,
-            "PartyA": self.config.shortcode,
-            "PartyB": self._normalize_phone(phone_number),
-            "Remarks": remarks,
-            "QueueTimeOutURL": self.config.callback_urls["b2c_timeout"],
-            "ResultURL": self.config.callback_urls["b2c_result"],
-            "Occasion": occasion,
-        }
-        transaction = self._create_transaction(DarajaTransaction.TYPE_B2C, command_id, payload)
-        return self._post("/mpesa/b2c/v3/paymentrequest", payload, transaction=transaction)
+        resolved_originator_conversation_id = (
+            self._clean_originator_conversation_id(originator_conversation_id)
+            if originator_conversation_id
+            else ""
+        )
+
+        if resolved_originator_conversation_id and DarajaTransaction.objects.filter(
+            originator_conversation_id=resolved_originator_conversation_id
+        ).exists():
+            raise ValueError(
+                f"OriginatorConversationID '{resolved_originator_conversation_id}' already exists"
+            )
+
+        # Auto-generation retries handle very unlikely ID collisions during concurrent submissions.
+        for _ in range(5):
+            request_originator_conversation_id = (
+                resolved_originator_conversation_id
+                if resolved_originator_conversation_id
+                else self._generate_originator_conversation_id()
+            )
+
+            payload = {
+                "OriginatorConversationID": request_originator_conversation_id,
+                "InitiatorName": self.config.initiator_name,
+                "SecurityCredential": self._get_security_credential(),
+                "CommandID": command_id,
+                "Amount": amount,
+                "PartyA": self.config.shortcode,
+                "PartyB": self._normalize_phone(phone_number),
+                "Remarks": remarks,
+                "QueueTimeOutURL": self.config.callback_urls["b2c_timeout"],
+                "ResultURL": self.config.callback_urls["b2c_result"],
+                "Occasion": occasion,
+            }
+
+            try:
+                transaction = self._create_transaction(
+                    DarajaTransaction.TYPE_B2C,
+                    command_id,
+                    payload,
+                )
+                return self._post(
+                    "/mpesa/b2c/v3/paymentrequest",
+                    payload,
+                    transaction=transaction,
+                )
+            except IntegrityError as exc:
+                if resolved_originator_conversation_id:
+                    raise ValueError(
+                        f"OriginatorConversationID '{resolved_originator_conversation_id}' already exists"
+                    ) from exc
+
+        raise DarajaAPIError(
+            "Failed to generate a unique OriginatorConversationID after multiple attempts"
+        )
 
     def pay_to_paybill(
         self,

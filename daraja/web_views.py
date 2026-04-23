@@ -160,6 +160,8 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
             "remarks": data.get("remarks", ""),
             "occasion": data.get("occasion", ""),
             "command_id": data["command_id"],
+            "originator_id_mode": data.get("originator_id_mode", "auto"),
+            "originator_conversation_id": data.get("originator_conversation_id", ""),
         }
 
         try:
@@ -170,6 +172,12 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
                 remarks=data.get("remarks", ""),
                 occasion=data.get("occasion", ""),
                 command_id=data["command_id"],
+                originator_conversation_id=(
+                    data.get("originator_conversation_id")
+                    if data.get("originator_id_mode")
+                    == B2CWithdrawalForm.ORIGINATOR_ID_MODE_MANUAL
+                    else None
+                ),
             )
             self._save_success(
                 request=request,

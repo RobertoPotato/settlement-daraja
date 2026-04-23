@@ -45,6 +45,13 @@ class DarajaTransaction(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["originator_conversation_id"],
+                condition=~models.Q(originator_conversation_id=""),
+                name="daraja_unique_nonempty_originator_conversation_id",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.transaction_type}:{self.command_id}:{self.status}"

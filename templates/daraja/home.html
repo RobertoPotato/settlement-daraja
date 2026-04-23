@@ -33,6 +33,17 @@
                 {{ b2c_form.command_id }}
             </div>
             <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">OriginatorConversationID Mode</label>
+                {{ b2c_form.originator_id_mode }}
+                {{ b2c_form.originator_id_mode.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">OriginatorConversationID (Manual)</label>
+                {{ b2c_form.originator_conversation_id }}
+                {{ b2c_form.originator_conversation_id.errors }}
+                <p class="mt-1 text-xs text-slate-500">Leave blank in auto mode. In manual mode, value must be unique.</p>
+            </div>
+            <div>
                 <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Remarks</label>
                 {{ b2c_form.remarks }}
             </div>

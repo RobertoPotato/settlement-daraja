@@ -68,6 +68,9 @@ class PayToPhoneAPIView(APIView):
                 remarks=serializer.validated_data.get("remarks", ""),
                 occasion=serializer.validated_data.get("occasion", ""),
                 command_id=serializer.validated_data.get("command_id", "BusinessPayment"),
+                originator_conversation_id=serializer.validated_data.get(
+                    "originator_conversation_id"
+                ),
             )
 
             # Retrieve transaction for response
