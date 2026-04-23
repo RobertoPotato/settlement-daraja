@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Landing | Settlement Daraja{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-cyan-100 via-white to-emerald-100 p-8 md:p-14 shadow-sm">
+    <div class="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyan-300/40 blur-3xl"></div>
+    <div class="absolute -bottom-24 -left-10 h-56 w-56 rounded-full bg-emerald-300/40 blur-3xl"></div>
+
+    <div class="relative max-w-3xl space-y-6">
+        <p class="inline-flex rounded-full border border-cyan-300 bg-cyan-50 px-3 py-1 text-xs uppercase tracking-widest text-cyan-700">
+            Daraja Test Console
+        </p>
+        <h1 class="text-4xl font-black leading-tight text-slate-900 md:text-6xl">
+            Launch and validate M-Pesa flows from one secure dashboard.
+        </h1>
+        <p class="max-w-2xl text-slate-700">
+            Authenticate with email and password, trigger B2C/B2B/balance requests with forms,
+            and inspect test outcomes with full JSON request and response logs stored in your database.
+        </p>
+        <div class="flex flex-wrap gap-3">
+            <a href="{% url 'account_login' %}" class="rounded-xl bg-cyan-600 px-5 py-3 font-semibold text-white hover:bg-cyan-500">
+                Login
+            </a>
+            <a href="{% url 'account_signup' %}" class="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-3 font-semibold text-emerald-700 hover:bg-emerald-100">
+                Create account
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

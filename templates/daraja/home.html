@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% load daraja_extras %}
+
+{% block title %}Home | Daraja Test Console{% endblock %}
+
+{% block content %}
+<section class="grid gap-6 lg:grid-cols-3">
+    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold text-cyan-700">B2C Withdrawal Test</h2>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="test_type" value="b2c">
+            {{ b2c_form.non_field_errors }}
+
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Environment</label>
+                {{ b2c_form.environment }}
+                {{ b2c_form.environment.errors }}
+            </div>
+
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Phone Number</label>
+                {{ b2c_form.phone_number }}
+                {{ b2c_form.phone_number.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Amount</label>
+                {{ b2c_form.amount }}
+                {{ b2c_form.amount.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Command</label>
+                {{ b2c_form.command_id }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Remarks</label>
+                {{ b2c_form.remarks }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Occasion</label>
+                {{ b2c_form.occasion }}
+            </div>
+            <button type="submit" class="w-full rounded-lg bg-cyan-600 px-3 py-2 font-semibold text-white hover:bg-cyan-500">Run B2C Test</button>
+        </form>
+    </article>
+
+    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold text-emerald-700">B2B Withdrawal Test</h2>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="test_type" value="b2b">
+            {{ b2b_form.non_field_errors }}
+
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Environment</label>
+                {{ b2b_form.environment }}
+                {{ b2b_form.environment.errors }}
+            </div>
+
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Receiver Shortcode</label>
+                {{ b2b_form.receiver_shortcode }}
+                {{ b2b_form.receiver_shortcode.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Amount</label>
+                {{ b2b_form.amount }}
+                {{ b2b_form.amount.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Account Reference</label>
+                {{ b2b_form.account_reference }}
+                {{ b2b_form.account_reference.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Command</label>
+                {{ b2b_form.command_id }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Receiver Identifier</label>
+                {{ b2b_form.receiver_identifier_type }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Remarks</label>
+                {{ b2b_form.remarks }}
+            </div>
+            <button type="submit" class="w-full rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white hover:bg-emerald-500">Run B2B Test</button>
+        </form>
+    </article>
+
+    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold text-amber-700">Balance Test</h2>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="test_type" value="balance">
+            {{ balance_form.non_field_errors }}
+
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Environment</label>
+                {{ balance_form.environment }}
+                {{ balance_form.environment.errors }}
+            </div>
+
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Identifier Type</label>
+                {{ balance_form.identifier_type }}
+            </div>
+
+            <button type="submit" class="w-full rounded-lg bg-amber-600 px-3 py-2 font-semibold text-white hover:bg-amber-500">Run Balance Test</button>
+        </form>
+    </article>
+</section>
+
+<section class="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="mb-4 text-xl font-semibold">Recent Test Runs</h2>
+
+    <div class="space-y-4">
+        {% for run in recent_test_runs %}
+            <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="rounded-full border border-slate-300 bg-white px-2 py-1 uppercase tracking-wide">{{ run.test_type }}</span>
+                        <span class="rounded-full border border-slate-300 bg-white px-2 py-1">{{ run.execution_environment }}</span>
+                        <span class="rounded-full border border-slate-300 bg-white px-2 py-1">{{ run.test_status }}</span>
+                        <span class="rounded-full border border-slate-300 bg-white px-2 py-1">ResponseCode: {{ run.response_status_code|default:"n/a" }}</span>
+                    </div>
+                    <span class="text-xs text-slate-500">{{ run.created_at }}</span>
+                </div>
+
+                <p class="mb-3 text-sm text-slate-700">{{ run.status_interpretation }}</p>
+
+                {% if run.error_message %}
+                    <p class="mb-3 rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">{{ run.error_message }}</p>
+                {% endif %}
+
+                {% if run.transaction %}
+                    <p class="mb-3 text-xs text-slate-600">
+                        Linked Transaction: {{ run.transaction.originator_conversation_id|default:run.transaction.conversation_id }}
+                        (status: {{ run.transaction.status }})
+                    </p>
+                {% endif %}
+
+                <details class="mb-2 rounded-lg border border-slate-200 bg-white p-2">
+                    <summary class="cursor-pointer text-sm text-cyan-700">Request JSON</summary>
+                    <pre class="mt-2 overflow-x-auto text-xs text-slate-700">{{ run.request_payload|pretty_json }}</pre>
+                </details>
+
+                <details class="rounded-lg border border-slate-200 bg-white p-2">
+                    <summary class="cursor-pointer text-sm text-emerald-700">Response JSON</summary>
+                    <pre class="mt-2 overflow-x-auto text-xs text-slate-700">{{ run.response_payload|pretty_json }}</pre>
+                </details>
+            </article>
+        {% empty %}
+            <p class="text-sm text-slate-500">No tests run yet. Submit one of the forms above.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<style>
+    input, select, textarea {
+        width: 100%;
+        border-radius: 0.5rem;
+        border: 1px solid rgb(203 213 225);
+        background: rgb(255 255 255);
+        color: rgb(15 23 42);
+        padding: 0.5rem 0.75rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: rgb(8 145 178);
+        box-shadow: 0 0 0 1px rgb(8 145 178);
+    }
+</style>
+{% endblock %}
