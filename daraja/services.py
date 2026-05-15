@@ -274,6 +274,8 @@ class DarajaPayoutManager:
     ) -> dict[str, Any]:
         self._validate()
         self._validate_amount(amount)
+        
+        print("Debug: Starting pay_to_phone with phone_number=%s, amount=%d, remarks=%s, occasion=%s, command_id=%s, originator_conversation_id=%s", phone_number, amount, remarks, occasion, command_id, originator_conversation_id)
 
         resolved_originator_conversation_id = (
             self._clean_originator_conversation_id(originator_conversation_id)
@@ -301,14 +303,16 @@ class DarajaPayoutManager:
                 "InitiatorName": self.config.initiator_name,
                 "SecurityCredential": self._get_security_credential(),
                 "CommandID": command_id,
-                "Amount": amount,
+                "Amount": str(amount),
                 "PartyA": self.config.shortcode,
-                "PartyB": self._normalize_phone(phone_number),
+                "PartyB": int(self._normalize_phone(phone_number)),
                 "Remarks": remarks,
                 "QueueTimeOutURL": self.config.callback_urls["b2c_timeout"],
                 "ResultURL": self.config.callback_urls["b2c_result"],
                 "Occasion": occasion,
             }
+            
+            print("Debug: Prepared payload for pay_to_phone: %s", payload)
 
             try:
                 transaction = self._create_transaction(
