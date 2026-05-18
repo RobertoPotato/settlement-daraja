@@ -232,14 +232,6 @@ DARAJA_CONFIG = {
     "shortcode": env.str(f"{_DARAJA_PREFIX}_SHORTCODE", default=""),
     "initiator_name": env.str(f"{_DARAJA_PREFIX}_INITIATOR_NAME", default=""),
     "initiator_password": env.str(f"{_DARAJA_PREFIX}_INITIATOR_PASSWORD", default=""),
-    "certificate_path": env.str(
-        f"{_DARAJA_PREFIX}_CERTIFICATE_PATH",
-        default=str(
-            BASE_DIR
-            / "security"
-            / ("SandboxCertificate.cer" if DARAJA_ENV == "sandbox" else "ProductionCertificate.cer")
-        ),
-    ),
     "callback_urls": DARAJA_CALLBACK_URLS,
     "timeout_seconds": DARAJA_TIMEOUT_SECONDS,
     "token_refresh_buffer_seconds": DARAJA_TOKEN_REFRESH_BUFFER_SECONDS,

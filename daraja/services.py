@@ -401,28 +401,19 @@ def _build_environment_config(environment: str, paybill_number: str) -> DarajaCo
 
 
 def get_daraja_config(environment: str | None = None, paybill_number: str | None = None) -> DarajaConfig:
+    selected_paybill_number = str(paybill_number or "").strip()
+    if not selected_paybill_number:
+        raise DarajaConfigurationError(
+            "paybill_number is required. All paybill configurations must be fetched from the database."
+        )
+    
     resolved_environment = (
         str(environment).strip().lower()
         if environment is not None
         else str(getattr(settings, "DARAJA_ENV", "sandbox")).strip().lower()
     )
-    selected_paybill_number = str(paybill_number or "").strip()
-    if selected_paybill_number:
-        return _build_environment_config(resolved_environment, selected_paybill_number)
-
-    raw_config = getattr(settings, "DARAJA_CONFIG", {})
-    callback_urls = raw_config.get("callback_urls", {})
-    return DarajaConfig(
-        environment=raw_config.get("environment", resolved_environment),
-        consumer_key=raw_config.get("consumer_key", ""),
-        consumer_secret=raw_config.get("consumer_secret", ""),
-        shortcode=raw_config.get("shortcode", ""),
-        initiator_name=raw_config.get("initiator_name", ""),
-        initiator_password=raw_config.get("initiator_password", ""),
-        callback_urls=callback_urls,
-        timeout_seconds=int(raw_config.get("timeout_seconds", 30)),
-        token_refresh_buffer_seconds=int(raw_config.get("token_refresh_buffer_seconds", 60)),
-    )
+    
+    return _build_environment_config(resolved_environment, selected_paybill_number)
 
 
 def get_daraja_manager(paybill_number: str | None = None) -> DarajaPayoutManager:

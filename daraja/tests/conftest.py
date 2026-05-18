@@ -11,7 +11,6 @@ def daraja_config_override():
         "shortcode": "600111",
         "initiator_name": "testapi",
         "initiator_password": "super-secret-password",
-        "certificate_path": "/home/bob/Documents/GitHub/settlement/security/SandboxCertificate.cer",
         "callback_urls": {
             "b2c_result": "https://example.com/api/daraja/b2c/callback/result/",
             "b2c_timeout": "https://example.com/api/daraja/b2c/callback/timeout/",
