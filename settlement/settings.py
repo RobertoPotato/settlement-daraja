@@ -10,53 +10,32 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
-def _env_bool(name: str, default: bool) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _env_list(name: str, default: list[str]) -> list[str]:
-    raw = os.getenv(name)
-    if not raw:
-        return default
-    return [item.strip() for item in raw.split(",") if item.strip()]
-
-
-def _env_int(name: str, default: int) -> int:
-    raw = os.getenv(name)
-    if raw is None or raw.strip() == "":
-        return default
-    return int(raw)
-
-
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
+SECRET_KEY = env.str(
     "DJANGO_SECRET_KEY",
-    "django-insecure-c-(356fmygufb-jk1$o8tdk9qm_=rqx7s!b_%w@c)&!nw))wg*",
+    default="django-insecure-c-(356fmygufb-jk1$o8tdk9qm_=rqx7s!b_%w@c)&!nw))wg*",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", True)
+DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = _env_list(
+ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
-    [
+    default=[
         "127.0.0.1",
         "localhost",
         "zetu.laivoo.com",
@@ -125,18 +104,18 @@ WSGI_APPLICATION = "settlement.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.sqlite3")
-DB_NAME = os.getenv("DB_NAME", str(BASE_DIR / "db.sqlite3"))
+DB_ENGINE = env.str("DB_ENGINE", default="django.db.backends.sqlite3")
+DB_NAME = env.str("DB_NAME", default=str(BASE_DIR / "db.sqlite3"))
 
 DATABASES = {
     "default": {
         "ENGINE": DB_ENGINE,
         "NAME": DB_NAME,
-        "USER": os.getenv("DB_USER", ""),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", ""),
-        "CONN_MAX_AGE": _env_int("DB_CONN_MAX_AGE", 60),
+        "USER": env.str("DB_USER", default=""),
+        "PASSWORD": env.str("DB_PASSWORD", default=""),
+        "HOST": env.str("DB_HOST", default=""),
+        "PORT": env.str("DB_PORT", default=""),
+        "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=60),
     }
 }
 
@@ -216,14 +195,14 @@ REST_FRAMEWORK = {
 
 
 # Daraja / M-Pesa settings
-DARAJA_ENV = os.getenv("DARAJA_ENV", "sandbox").strip().lower()
+DARAJA_ENV = env.str("DARAJA_ENV", default="sandbox").strip().lower()
 if DARAJA_ENV not in {"sandbox", "production"}:
     raise ValueError("DARAJA_ENV must be either 'sandbox' or 'production'.")
 
-DARAJA_CALLBACK_BASE_URL = os.getenv("DARAJA_CALLBACK_BASE_URL", "https://example.com").rstrip("/")
-DARAJA_TIMEOUT_SECONDS = int(os.getenv("DARAJA_TIMEOUT_SECONDS", "30"))
-DARAJA_TOKEN_REFRESH_BUFFER_SECONDS = int(
-    os.getenv("DARAJA_TOKEN_REFRESH_BUFFER_SECONDS", "60")
+DARAJA_CALLBACK_BASE_URL = env.str("DARAJA_CALLBACK_BASE_URL", default="https://example.com").rstrip("/")
+DARAJA_TIMEOUT_SECONDS = env.int("DARAJA_TIMEOUT_SECONDS", default=30)
+DARAJA_TOKEN_REFRESH_BUFFER_SECONDS = env.int(
+    "DARAJA_TOKEN_REFRESH_BUFFER_SECONDS", default=60
 )
 
 DARAJA_CALLBACK_PATHS = {
@@ -242,14 +221,14 @@ DARAJA_CALLBACK_URLS = {
 _DARAJA_PREFIX = f"DARAJA_{DARAJA_ENV.upper()}"
 DARAJA_CONFIG = {
     "environment": DARAJA_ENV,
-    "consumer_key": os.getenv(f"{_DARAJA_PREFIX}_CONSUMER_KEY", ""),
-    "consumer_secret": os.getenv(f"{_DARAJA_PREFIX}_CONSUMER_SECRET", ""),
-    "shortcode": os.getenv(f"{_DARAJA_PREFIX}_SHORTCODE", ""),
-    "initiator_name": os.getenv(f"{_DARAJA_PREFIX}_INITIATOR_NAME", ""),
-    "initiator_password": os.getenv(f"{_DARAJA_PREFIX}_INITIATOR_PASSWORD", ""),
-    "certificate_path": os.getenv(
+    "consumer_key": env.str(f"{_DARAJA_PREFIX}_CONSUMER_KEY", default=""),
+    "consumer_secret": env.str(f"{_DARAJA_PREFIX}_CONSUMER_SECRET", default=""),
+    "shortcode": env.str(f"{_DARAJA_PREFIX}_SHORTCODE", default=""),
+    "initiator_name": env.str(f"{_DARAJA_PREFIX}_INITIATOR_NAME", default=""),
+    "initiator_password": env.str(f"{_DARAJA_PREFIX}_INITIATOR_PASSWORD", default=""),
+    "certificate_path": env.str(
         f"{_DARAJA_PREFIX}_CERTIFICATE_PATH",
-        str(
+        default=str(
             BASE_DIR
             / "security"
             / ("SandboxCertificate.cer" if DARAJA_ENV == "sandbox" else "ProductionCertificate.cer")
