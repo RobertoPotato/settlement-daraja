@@ -1,4 +1,4 @@
-# Daraja M-Pesa Integration for Django
+# Daraja M-Pesa Integration for the Settleent System
 
 A production-ready Django integration for **Safaricom Daraja M-Pesa API**, supporting **B2C payouts** (to phone), **B2B payouts** (to paybill/bank), and **account balance** checks with environment-driven sandbox/production switching, webhook callback handling, and full audit logging.
 
@@ -879,7 +879,7 @@ No code changes needed. The manager automatically loads credentials based on `DA
 
 ## License
 
-This integration is part of the Settlement Django project.
+This integration is part of the Settlement project by Alpha Systems Limited.
 
 ## Support
 
@@ -888,3 +888,63 @@ For issues or questions:
 2. Review DarajaRequestLog for API call details
 3. Check system logs for error messages
 4. Refer to [Daraja Documentation](https://daraja.safaricom.co.ke)
+
+## 🐘 PostgreSQL Docker Connection Issue (host.docker.internal)
+
+### ❗ Problem
+
+When running the Django application inside a Docker container, PostgreSQL running on the host machine failed to accept connections.
+
+The error observed was:
+
+django.db.utils.OperationalError:
+FATAL: no pg_hba.conf entry for host "172.x.x.x", user "postgres", database "settlement"
+
+
+Key observations:
+- `host.docker.internal` resolved correctly to `172.17.0.1`
+- Network connectivity to the host machine was working
+- PostgreSQL rejected the connection due to authentication/access rules
+- Docker container IPs were dynamic (e.g. `172.18.0.2`), making fixed subnet rules unreliable
+
+---
+
+### 🔍 Root Cause
+
+1. PostgreSQL was not listening on external interfaces: 127.0.0.1:5432
+
+2. `pg_hba.conf` did not allow connections from Docker networks
+- Docker uses dynamic subnets (e.g. `172.17.0.0/16`, `172.18.0.0/16`, etc.)
+- The configured rule did not match the actual container IP range
+
+---
+
+### ✅ Solution
+
+#### 1. Allow PostgreSQL to listen on all interfaces
+
+Edit `postgresql.conf`:
+
+```conf
+listen_addresses = '*'
+```
+
+#### 2. Allow Docker network access in `pg_hba.conf`
+
+Add the following rule:
+
+```conf
+host    all    all    0.0.0.0/0    scram-sha-256
+```
+
+Restart PostgreSQL:
+
+```bash
+sudo systemctl restart postgresql
+```
+
+Verify PostgreSQL is listening on port 5432:
+
+```bash
+sudo ss -ltnp | grep 5432
+```

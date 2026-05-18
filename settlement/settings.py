@@ -38,6 +38,13 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return int(raw)
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
@@ -118,10 +125,18 @@ WSGI_APPLICATION = "settlement.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.sqlite3")
+DB_NAME = os.getenv("DB_NAME", str(BASE_DIR / "db.sqlite3"))
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": DB_ENGINE,
+        "NAME": DB_NAME,
+        "USER": os.getenv("DB_USER", ""),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
+        "CONN_MAX_AGE": _env_int("DB_CONN_MAX_AGE", 60),
     }
 }
 
