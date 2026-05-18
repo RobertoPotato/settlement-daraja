@@ -96,7 +96,6 @@ DARAJA_SANDBOX_CONSUMER_SECRET=your_sandbox_consumer_secret
 DARAJA_SANDBOX_SHORTCODE=600980  # or your sandbox shortcode
 DARAJA_SANDBOX_INITIATOR_NAME=your_initiator_name
 DARAJA_SANDBOX_INITIATOR_PASSWORD=your_initiator_password
-DARAJA_SANDBOX_CERTIFICATE_PATH=security/SandboxCertificate.cer
 
 # PRODUCTION CREDENTIALS
 DARAJA_PRODUCTION_CONSUMER_KEY=your_production_consumer_key
@@ -104,7 +103,6 @@ DARAJA_PRODUCTION_CONSUMER_SECRET=your_production_consumer_secret
 DARAJA_PRODUCTION_SHORTCODE=your_production_shortcode
 DARAJA_PRODUCTION_INITIATOR_NAME=your_initiator_name
 DARAJA_PRODUCTION_INITIATOR_PASSWORD=your_initiator_password
-DARAJA_PRODUCTION_CERTIFICATE_PATH=security/ProductionCertificate.cer
 ```
 
 #### Environment Variables Reference
@@ -120,7 +118,6 @@ DARAJA_PRODUCTION_CERTIFICATE_PATH=security/ProductionCertificate.cer
 | `DARAJA_SANDBOX_SHORTCODE` | Sender shortcode (sandbox) | `600980` | Yes (sandbox) |
 | `DARAJA_SANDBOX_INITIATOR_NAME` | API initiator name (sandbox) | `testuser` | Yes (sandbox) |
 | `DARAJA_SANDBOX_INITIATOR_PASSWORD` | API initiator password (sandbox) | `Safaricom123!` | Yes (sandbox) |
-| `DARAJA_SANDBOX_CERTIFICATE_PATH` | Path to certificate file (sandbox) | `security/SandboxCertificate.cer` | Yes (sandbox) |
 
 (Repeat PRODUCTION_* variants for production environment)
 
@@ -130,14 +127,14 @@ DARAJA_PRODUCTION_CERTIFICATE_PATH=security/ProductionCertificate.cer
    - Sandbox: SandboxCertificate.cer
    - Production: ProductionCertificate.cer
 
-2. Place in `security/` directory:
+2. Place in `security/` directory at project root:
    ```bash
    security/
    ├── SandboxCertificate.cer
    └── ProductionCertificate.cer
    ```
 
-3. Update `.env` with correct paths
+**Note**: Certificate paths are automatically resolved from the `security/` directory based on the active environment (`DARAJA_ENV`). No `.env` configuration needed for certificate paths.
 
 ### 3. Django Admin Access
 
@@ -170,8 +167,8 @@ Used when integrating directly from your business logic (non-API usage).
 
 | Function | Parameters | Returns | Description |
 |----------|------------|---------|-------------|
-| `get_daraja_config()` | None | DarajaConfig | Load and return DarajaConfig from Django settings. Reads DARAJA_CONFIG dict. |
-| `get_daraja_manager()` | None | DarajaPayoutManager | Instantiate DarajaPayoutManager with active config (determined by DARAJA_ENV). |
+| `get_daraja_config()` | `paybill_number` (str), `environment` (str, optional) | DarajaConfig | Load and return DarajaConfig from database. **Requires paybill_number.** All paybill configurations must exist in the database. |
+| `get_daraja_manager()` | `paybill_number` (str, optional) | DarajaPayoutManager | Instantiate DarajaPayoutManager. If paybill_number provided, loads config from DB; otherwise raises error. |
 
 ### REST API Endpoints (Secured)
 
@@ -360,8 +357,8 @@ Use this approach when integrating from business logic or background tasks.
 ```python
 from daraja.services import get_daraja_manager
 
-# Get manager instance (reads config from Django settings)
-manager = get_daraja_manager()
+# Get manager instance (reads config from database for specified paybill)
+manager = get_daraja_manager(paybill_number="123456")
 
 # Initiate B2C payout
 try:
@@ -391,7 +388,7 @@ except Exception as e:
 ```python
 from daraja.services import get_daraja_manager
 
-manager = get_daraja_manager()
+manager = get_daraja_manager(paybill_number="123456")
 
 try:
     response = manager.pay_to_paybill(
@@ -414,7 +411,7 @@ except Exception as e:
 ```python
 from daraja.services import get_daraja_manager
 
-manager = get_daraja_manager()
+manager = get_daraja_manager(paybill_number="123456")
 
 try:
     response = manager.check_balance()
@@ -813,6 +810,8 @@ DARAJA_SANDBOX_CONSUMER_SECRET=your_sandbox_secret
 # ... other sandbox credentials
 ```
 
+**Important**: Paybill configurations must be created in the database via Django admin or API. Set `DARAJA_ENV=sandbox` to load sandbox-environment paybills.
+
 ### Production
 
 ```bash
@@ -823,7 +822,9 @@ DARAJA_PRODUCTION_CONSUMER_SECRET=your_production_secret
 # ... other production credentials
 ```
 
-No code changes needed. The manager automatically loads credentials based on `DARAJA_ENV`.
+**Important**: Paybill configurations must be created in the database via Django admin or API. Set `DARAJA_ENV=production` to load production-environment paybills.
+
+No code changes needed. The system automatically loads the correct environment and resolves certificate paths based on `DARAJA_ENV`.
 
 ---
 
@@ -839,20 +840,28 @@ No code changes needed. The manager automatically loads credentials based on `DA
 - Run: `echo $DARAJA_SANDBOX_CONSUMER_KEY` to verify
 
 **3. Certificate not found**
-- Verify certificate file exists at path specified in `DARAJA_*_CERTIFICATE_PATH`
+- Verify certificate files exist in `security/` directory at project root:
+  - `security/SandboxCertificate.cer` for sandbox
+  - `security/ProductionCertificate.cer` for production
 - Check file permissions (should be readable)
 
-**4. Callback not received**
+**4. Paybill configuration not found**
+- Ensure the paybill exists in the database for the active environment (`DARAJA_ENV`)
+- Create paybill via Django admin or API
+- Verify it is marked as active (`is_active=True`)
+- Check that paybill_number is passed when calling `get_daraja_manager(paybill_number="...")`
+
+**5. Callback not received**
 - Verify `DARAJA_CALLBACK_BASE_URL` is publicly accessible
 - Use ngrok (local dev): `ngrok http 8000`, then set `DARAJA_CALLBACK_BASE_URL=https://your-ngrok-url.ngrok.io`
 - Check Django logs for incoming requests
 - Verify callback routes registered: `python manage.py show_urls`
 
-**5. Token expiration errors**
+**6. Token expiration errors**
 - Increase `DARAJA_TOKEN_REFRESH_BUFFER_SECONDS` (default 60 seconds)
 - Ensure system clock is synchronized
 
-**6. "Database access not allowed" in tests**
+**7. "Database access not allowed" in tests**
 - Add `@pytest.mark.django_db` decorator to test function
 - Run pytest with: `pytest --ds=settlement.settings`
 
