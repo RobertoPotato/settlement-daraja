@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Add Paybill | Daraja{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h1 class="mb-4 text-2xl font-semibold text-cyan-700">Add Daraja Paybill Configuration</h1>
+    <form method="post" class="space-y-3">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        {% for field in form %}
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+
+        <div class="flex items-center gap-3 pt-2">
+            <button type="submit" class="rounded-lg bg-cyan-600 px-4 py-2 font-semibold text-white hover:bg-cyan-500">Save Paybill</button>
+            <a href="{% url 'home' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50">Cancel</a>
+        </div>
+    </form>
+</section>
+
+<style>
+    input, select, textarea {
+        width: 100%;
+        border-radius: 0.5rem;
+        border: 1px solid rgb(203 213 225);
+        background: rgb(255 255 255);
+        color: rgb(15 23 42);
+        padding: 0.5rem 0.75rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: rgb(8 145 178);
+        box-shadow: 0 0 0 1px rgb(8 145 178);
+    }
+</style>
+{% endblock %}

@@ -11,6 +11,10 @@ from rest_framework import serializers
 class PayToPhoneSerializer(serializers.Serializer):
     """Serializer for B2C (pay to phone) requests."""
 
+    paybill_number = serializers.CharField(
+        max_length=20,
+        help_text="Paybill number used to resolve Daraja credentials for this request.",
+    )
     phone_number = serializers.CharField(
         max_length=20,
         help_text="Phone number in format 07XX..., +254XX..., or 254XX...",
@@ -53,6 +57,10 @@ class PayToPhoneSerializer(serializers.Serializer):
 class PayToPaybillSerializer(serializers.Serializer):
     """Serializer for B2B (pay to paybill/bank) requests."""
 
+    paybill_number = serializers.CharField(
+        max_length=20,
+        help_text="Paybill number used to resolve Daraja credentials for this request.",
+    )
     receiver_shortcode = serializers.CharField(
         max_length=50,
         help_text="Paybill or bank code (6 digits)",
@@ -92,6 +100,10 @@ class PayToPaybillSerializer(serializers.Serializer):
 class CheckBalanceSerializer(serializers.Serializer):
     """Serializer for balance check requests."""
 
+    paybill_number = serializers.CharField(
+        max_length=20,
+        help_text="Paybill number used to resolve Daraja credentials for this request.",
+    )
     identifier_type = serializers.CharField(
         max_length=50,
         required=False,

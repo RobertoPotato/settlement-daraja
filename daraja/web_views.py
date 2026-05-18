@@ -7,7 +7,12 @@ from django.shortcuts import redirect, render
 from django.views import View
 from django.views.generic import TemplateView
 
-from .forms import B2BWithdrawalForm, B2CWithdrawalForm, BalanceCheckForm
+from .forms import (
+    B2BWithdrawalForm,
+    B2CWithdrawalForm,
+    BalanceCheckForm,
+    DarajaPaybillConfigForm,
+)
 from .models import DarajaTransaction, DarajaUITestRun
 from .services import (
     DarajaAPIError,
@@ -53,6 +58,30 @@ def _interpret_test_status(response_payload: dict[str, Any]) -> tuple[str, str, 
 
 class LandingPageView(TemplateView):
     template_name = "daraja/landing.html"
+
+
+class DarajaPaybillCreateView(LoginRequiredMixin, View):
+    template_name = "daraja/paybill_form.html"
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"form": DarajaPaybillConfigForm()})
+
+    def post(self, request, *args, **kwargs):
+        form = DarajaPaybillConfigForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please fix the paybill form errors and try again.")
+            return render(request, self.template_name, {"form": form})
+
+        paybill = form.save(commit=False)
+        paybill.created_by = request.user
+        paybill.updated_by = request.user
+        paybill.save()
+
+        messages.success(
+            request,
+            f"Paybill {paybill.paybill_number} ({paybill.environment}) has been saved.",
+        )
+        return redirect("home")
 
 
 class DarajaTestHomeView(LoginRequiredMixin, View):
@@ -155,6 +184,7 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
         environment = data["environment"]
         request_payload = {
             "environment": environment,
+            "paybill_number": data["paybill_number"],
             "phone_number": data["phone_number"],
             "amount": str(data["amount"]),
             "remarks": data.get("remarks", ""),
@@ -165,7 +195,10 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
         }
 
         try:
-            manager = get_daraja_manager_for_environment(environment)
+            manager = get_daraja_manager_for_environment(
+                environment,
+                paybill_number=data["paybill_number"],
+            )
             response_payload = manager.pay_to_phone(
                 phone_number=data["phone_number"],
                 amount=int(data["amount"]),
@@ -199,6 +232,7 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
         environment = data["environment"]
         request_payload = {
             "environment": environment,
+            "paybill_number": data["paybill_number"],
             "receiver_shortcode": data["receiver_shortcode"],
             "amount": str(data["amount"]),
             "account_reference": data["account_reference"],
@@ -208,7 +242,10 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
         }
 
         try:
-            manager = get_daraja_manager_for_environment(environment)
+            manager = get_daraja_manager_for_environment(
+                environment,
+                paybill_number=data["paybill_number"],
+            )
             response_payload = manager.pay_to_paybill(
                 receiver_shortcode=data["receiver_shortcode"],
                 amount=int(data["amount"]),
@@ -237,11 +274,15 @@ class DarajaTestHomeView(LoginRequiredMixin, View):
         environment = data["environment"]
         request_payload = {
             "environment": environment,
+            "paybill_number": data["paybill_number"],
             "identifier_type": data["identifier_type"],
         }
 
         try:
-            manager = get_daraja_manager_for_environment(environment)
+            manager = get_daraja_manager_for_environment(
+                environment,
+                paybill_number=data["paybill_number"],
+            )
             response_payload = manager.check_balance(identifier_type=data["identifier_type"])
             self._save_success(
                 request=request,

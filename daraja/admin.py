@@ -1,6 +1,35 @@
 from django.contrib import admin
 
-from .models import DarajaCallbackLog, DarajaRequestLog, DarajaTransaction, DarajaUITestRun
+from .models import (
+    DarajaCallbackLog,
+    DarajaPaybillConfig,
+    DarajaRequestLog,
+    DarajaTransaction,
+    DarajaUITestRun,
+)
+
+
+@admin.register(DarajaPaybillConfig)
+class DarajaPaybillConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "paybill_number",
+        "environment",
+        "shortcode",
+        "is_active",
+        "created_by",
+        "updated_by",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("environment", "is_active")
+    search_fields = ("paybill_number", "shortcode", "initiator_name")
+
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.created_by:
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(DarajaTransaction)

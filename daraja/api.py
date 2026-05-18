@@ -17,6 +17,7 @@ from daraja.serializers import (
     PayToPhoneSerializer,
 )
 from daraja.services import get_daraja_manager
+from daraja.services import DarajaConfigurationError
 
 
 class DarajaPermission(IsAuthenticated):
@@ -61,7 +62,9 @@ class PayToPhoneAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            manager = get_daraja_manager()
+            manager = get_daraja_manager(
+                paybill_number=serializer.validated_data["paybill_number"]
+            )
             response = manager.pay_to_phone(
                 phone_number=serializer.validated_data["phone_number"],
                 amount=int(serializer.validated_data["amount"]),
@@ -90,6 +93,14 @@ class PayToPhoneAPIView(APIView):
 
             return Response(response_data, status=status.HTTP_201_CREATED)
 
+        except DarajaConfigurationError as e:
+            return Response(
+                {
+                    "error": "configuration_error",
+                    "message": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ValueError as e:
             return Response(
                 {
@@ -142,7 +153,9 @@ class PayToPaybillAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            manager = get_daraja_manager()
+            manager = get_daraja_manager(
+                paybill_number=serializer.validated_data["paybill_number"]
+            )
             response = manager.pay_to_paybill(
                 receiver_shortcode=serializer.validated_data["receiver_shortcode"],
                 amount=int(serializer.validated_data["amount"]),
@@ -171,6 +184,14 @@ class PayToPaybillAPIView(APIView):
 
             return Response(response_data, status=status.HTTP_201_CREATED)
 
+        except DarajaConfigurationError as e:
+            return Response(
+                {
+                    "error": "configuration_error",
+                    "message": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ValueError as e:
             return Response(
                 {
@@ -220,7 +241,9 @@ class CheckBalanceAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            manager = get_daraja_manager()
+            manager = get_daraja_manager(
+                paybill_number=serializer.validated_data["paybill_number"]
+            )
             response = manager.check_balance(
                 identifier_type=serializer.validated_data.get("identifier_type", "4"),
             )
@@ -242,6 +265,14 @@ class CheckBalanceAPIView(APIView):
 
             return Response(response_data, status=status.HTTP_201_CREATED)
 
+        except DarajaConfigurationError as e:
+            return Response(
+                {
+                    "error": "configuration_error",
+                    "message": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ValueError as e:
             return Response(
                 {

@@ -1,6 +1,52 @@
 from django.db import models
 
 
+class DarajaPaybillConfig(models.Model):
+    ENV_SANDBOX = "sandbox"
+    ENV_PRODUCTION = "production"
+    ENV_CHOICES = [
+        (ENV_SANDBOX, "Sandbox"),
+        (ENV_PRODUCTION, "Production"),
+    ]
+
+    paybill_number = models.CharField(max_length=20)
+    environment = models.CharField(max_length=16, choices=ENV_CHOICES)
+    consumer_key = models.CharField(max_length=255)
+    consumer_secret = models.CharField(max_length=255)
+    shortcode = models.CharField(max_length=20)
+    initiator_name = models.CharField(max_length=255)
+    initiator_password = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="daraja_paybills_created",
+    )
+    updated_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="daraja_paybills_updated",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["paybill_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["paybill_number", "environment"],
+                name="daraja_unique_paybill_per_environment",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.paybill_number} ({self.environment})"
+
+
 class DarajaTransaction(models.Model):
     TYPE_B2C = "b2c"
     TYPE_B2B = "b2b"

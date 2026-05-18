@@ -10,12 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 
+from pathlib import Path
 import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Always resolve certificate paths from security/ directory
+DARAJA_SANDBOX_CERTIFICATE_PATH = str(BASE_DIR / "security" / "SandboxCertificate.cer")
+DARAJA_PRODUCTION_CERTIFICATE_PATH = str(BASE_DIR / "security" / "ProductionCertificate.cer")
+
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
 
@@ -49,6 +54,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost',
     'http://127.0.0.1:81',
     'http://127.0.0.1',
+    'http://127.0.0.1:8000'
 ]
 
 # Application definition

@@ -1,6 +1,5 @@
 import base64
 import logging
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -12,7 +11,7 @@ from cryptography.x509 import load_pem_x509_certificate
 from django.conf import settings
 from django.db import IntegrityError
 
-from .models import DarajaRequestLog, DarajaTransaction
+from .models import DarajaPaybillConfig, DarajaRequestLog, DarajaTransaction
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ class DarajaConfig:
     shortcode: str
     initiator_name: str
     initiator_password: str
-    certificate_path: str
     callback_urls: dict[str, str]
     timeout_seconds: int = 30
     token_refresh_buffer_seconds: int = 60
@@ -74,7 +72,6 @@ class DarajaPayoutManager:
             "shortcode": self.config.shortcode,
             "initiator_name": self.config.initiator_name,
             "initiator_password": self.config.initiator_password,
-            "certificate_path": self.config.certificate_path,
         }
         missing = [key for key, value in required_fields.items() if not value]
         if missing:
@@ -133,7 +130,13 @@ class DarajaPayoutManager:
         if self._security_credential:
             return self._security_credential
 
-        with open(self.config.certificate_path, "rb") as cert_file:
+        # Always resolve certificate path from settings based on environment
+        if self.config.environment == "sandbox":
+            cert_path = str(getattr(settings, "DARAJA_SANDBOX_CERTIFICATE_PATH", str(settings.BASE_DIR / "security" / "SandboxCertificate.cer")))
+        else:
+            cert_path = str(getattr(settings, "DARAJA_PRODUCTION_CERTIFICATE_PATH", str(settings.BASE_DIR / "security" / "ProductionCertificate.cer")))
+
+        with open(cert_path, "rb") as cert_file:
             certificate = load_pem_x509_certificate(cert_file.read())
 
         public_key = certificate.public_key()
@@ -274,8 +277,6 @@ class DarajaPayoutManager:
     ) -> dict[str, Any]:
         self._validate()
         self._validate_amount(amount)
-        
-        print("Debug: Starting pay_to_phone with phone_number=%s, amount=%d, remarks=%s, occasion=%s, command_id=%s, originator_conversation_id=%s", phone_number, amount, remarks, occasion, command_id, originator_conversation_id)
 
         resolved_originator_conversation_id = (
             self._clean_originator_conversation_id(originator_conversation_id)
@@ -311,8 +312,6 @@ class DarajaPayoutManager:
                 "ResultURL": self.config.callback_urls["b2c_result"],
                 "Occasion": occasion,
             }
-            
-            print("Debug: Prepared payload for pay_to_phone: %s", payload)
 
             try:
                 transaction = self._create_transaction(
@@ -366,28 +365,34 @@ class DarajaPayoutManager:
         return self._post("/mpesa/b2b/v1/paymentrequest", payload, transaction=transaction)
 
 
-def _build_environment_config(environment: str) -> DarajaConfig:
+def _build_environment_config(environment: str, paybill_number: str) -> DarajaConfig:
     env = environment.strip().lower()
     if env not in {"sandbox", "production"}:
         raise DarajaConfigurationError("Environment must be 'sandbox' or 'production'.")
 
-    prefix = f"DARAJA_{env.upper()}"
-    base_dir = getattr(settings, "BASE_DIR")
-    certificate_default = str(
-        base_dir
-        / "security"
-        / ("SandboxCertificate.cer" if env == "sandbox" else "ProductionCertificate.cer")
-    )
+    selected_paybill_number = str(paybill_number).strip()
+    if not selected_paybill_number:
+        raise DarajaConfigurationError("A paybill_number is required.")
 
+    paybill_config = DarajaPaybillConfig.objects.filter(
+        paybill_number=selected_paybill_number,
+        environment=env,
+        is_active=True,
+    ).first()
+    if not paybill_config:
+        raise DarajaConfigurationError(
+            f"No active paybill configuration found for paybill '{selected_paybill_number}' in {env}."
+        )
+
+    callback_urls = getattr(settings, "DARAJA_CALLBACK_URLS", {})
     return DarajaConfig(
         environment=env,
-        consumer_key=os.getenv(f"{prefix}_CONSUMER_KEY", ""),
-        consumer_secret=os.getenv(f"{prefix}_CONSUMER_SECRET", ""),
-        shortcode=os.getenv(f"{prefix}_SHORTCODE", ""),
-        initiator_name=os.getenv(f"{prefix}_INITIATOR_NAME", ""),
-        initiator_password=os.getenv(f"{prefix}_INITIATOR_PASSWORD", ""),
-        certificate_path=os.getenv(f"{prefix}_CERTIFICATE_PATH", certificate_default),
-        callback_urls=getattr(settings, "DARAJA_CALLBACK_URLS", {}),
+        consumer_key=paybill_config.consumer_key,
+        consumer_secret=paybill_config.consumer_secret,
+        shortcode=paybill_config.shortcode,
+        initiator_name=paybill_config.initiator_name,
+        initiator_password=paybill_config.initiator_password,
+        callback_urls=callback_urls,
         timeout_seconds=int(getattr(settings, "DARAJA_TIMEOUT_SECONDS", 30)),
         token_refresh_buffer_seconds=int(
             getattr(settings, "DARAJA_TOKEN_REFRESH_BUFFER_SECONDS", 60)
@@ -395,29 +400,36 @@ def _build_environment_config(environment: str) -> DarajaConfig:
     )
 
 
-def get_daraja_config(environment: str | None = None) -> DarajaConfig:
-    if environment:
-        return _build_environment_config(environment)
+def get_daraja_config(environment: str | None = None, paybill_number: str | None = None) -> DarajaConfig:
+    resolved_environment = (
+        str(environment).strip().lower()
+        if environment is not None
+        else str(getattr(settings, "DARAJA_ENV", "sandbox")).strip().lower()
+    )
+    selected_paybill_number = str(paybill_number or "").strip()
+    if selected_paybill_number:
+        return _build_environment_config(resolved_environment, selected_paybill_number)
 
     raw_config = getattr(settings, "DARAJA_CONFIG", {})
     callback_urls = raw_config.get("callback_urls", {})
     return DarajaConfig(
-        environment=raw_config.get("environment", "sandbox"),
+        environment=raw_config.get("environment", resolved_environment),
         consumer_key=raw_config.get("consumer_key", ""),
         consumer_secret=raw_config.get("consumer_secret", ""),
         shortcode=raw_config.get("shortcode", ""),
         initiator_name=raw_config.get("initiator_name", ""),
         initiator_password=raw_config.get("initiator_password", ""),
-        certificate_path=raw_config.get("certificate_path", ""),
         callback_urls=callback_urls,
         timeout_seconds=int(raw_config.get("timeout_seconds", 30)),
         token_refresh_buffer_seconds=int(raw_config.get("token_refresh_buffer_seconds", 60)),
     )
 
 
-def get_daraja_manager() -> DarajaPayoutManager:
-    return DarajaPayoutManager(config=get_daraja_config())
+def get_daraja_manager(paybill_number: str | None = None) -> DarajaPayoutManager:
+    return DarajaPayoutManager(config=get_daraja_config(paybill_number=paybill_number))
 
 
-def get_daraja_manager_for_environment(environment: str) -> DarajaPayoutManager:
-    return DarajaPayoutManager(config=get_daraja_config(environment=environment))
+def get_daraja_manager_for_environment(environment: str, paybill_number: str) -> DarajaPayoutManager:
+    return DarajaPayoutManager(
+        config=get_daraja_config(environment=environment, paybill_number=paybill_number)
+    )

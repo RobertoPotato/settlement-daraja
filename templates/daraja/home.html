@@ -17,6 +17,11 @@
                 {{ b2c_form.environment }}
                 {{ b2c_form.environment.errors }}
             </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Source Paybill</label>
+                {{ b2c_form.paybill_number }}
+                {{ b2c_form.paybill_number.errors }}
+            </div>
 
             <div>
                 <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Phone Number</label>
@@ -67,6 +72,11 @@
                 {{ b2b_form.environment }}
                 {{ b2b_form.environment.errors }}
             </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Source Paybill</label>
+                {{ b2b_form.paybill_number }}
+                {{ b2b_form.paybill_number.errors }}
+            </div>
 
             <div>
                 <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Receiver Shortcode</label>
@@ -110,6 +120,11 @@
                 <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Environment</label>
                 {{ balance_form.environment }}
                 {{ balance_form.environment.errors }}
+            </div>
+            <div>
+                <label class="mb-1 block text-xs uppercase tracking-wide text-slate-500">Source Paybill</label>
+                {{ balance_form.paybill_number }}
+                {{ balance_form.paybill_number.errors }}
             </div>
 
             <div>
